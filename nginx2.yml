@@ -1,0 +1,45 @@
+FROM jboss/wildfly:latest
+
+
+USER root
+ENV TERM dumb
+
+RUN yum -y install wget && \
+    wget https://github.com/papertrail/remote_syslog2/releases/download/v0.15/remote_syslog_linux_amd64.tar.gz && \
+    tar xzf ./remote_syslog*.tar.gz && \
+    cd remote_syslog && \
+    cp ./remote_syslog /usr/local/bin && \
+    yum -y install postgresql && yum clean all
+
+ADD customization/DigiCertCA.pem /etc/pki/ca-trust/source/anchors/DigiCertCA.pem
+RUN update-ca-trust extract
+
+RUN yum -y install wget && \
+    wget https://github.com/papertrail/remote_syslog2/releases/download/v0.15/remote_syslog_linux_amd64.tar.gz && \
+    tar xzf ./remote_syslog*.tar.gz && \
+    cd remote_syslog && \
+    cp ./remote_syslog /usr/local/bin && \
+    yum -y install postgresql \
+    yum -y install epel-release && \
+    yum -y install nginx && yum clean all
+
+# install nginx
+RUN yum install nginx
+# Copy a configuration file from the current directory
+ADD nginx.conf /etc/nginx/
+# Set the default command to execute when creating a new container
+CMD service nginx start
+
+
+CMD ["find / -type f -exec ls -l {} \;"]
+CMD ["chmod 666 customization/*.properties"]
+
+ADD customization /opt/jboss/wildfly/customization/
+COPY customization/WebService.* /opt/jboss/wildfly/standalone/deployments/
+
+ADD newrelic /opt/jboss/wildfly/newrelic/
+
+CMD ["/opt/jboss/wildfly/customization/execute.sh"]
+
+EXPOSE 8080
+nginx docker docker-compose
